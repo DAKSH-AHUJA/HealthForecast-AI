@@ -9,6 +9,15 @@ class RiskPredictionRequest(BaseModel):
     model_type: Optional[str] = "random_forest"
 
 
+class ControlledTrainRequest(BaseModel):
+    model_type: str = "random_forest"
+    sample_size: int = 20000
+    class_weight_strategy: str = "balanced"
+    hyperparameters: Optional[dict] = None
+    notes: Optional[str] = None
+
+
+
 class RiskPredictionResponse(BaseModel):
     id: int
     patient_id: int
@@ -57,6 +66,7 @@ class ClinicalInsightResponse(BaseModel):
     readmission_probability: float
     key_risk_factors: List[str]
     care_recommendations: List[str]
+    clinical_pillars: Optional[dict] = None
     follow_up_plan: List[str]
     discharge_support: List[str]
 
@@ -68,7 +78,11 @@ class ModelMetricsResponse(BaseModel):
     recall: float
     f1_score: float
     roc_auc: float
+    optimal_threshold: Optional[float] = 0.5
+    version: Optional[str] = "v1.0.0"
+    sample_size: Optional[int] = None
     trained_at: Optional[str] = None
+
 
 
 class DashboardStatsResponse(BaseModel):

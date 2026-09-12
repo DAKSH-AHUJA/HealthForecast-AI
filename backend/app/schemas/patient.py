@@ -77,13 +77,23 @@ class TreatmentCreate(BaseModel):
     outcome: Optional[str] = None
 
 
+class TreatmentUpdate(BaseModel):
+    medication: Optional[str] = None
+    dosage: Optional[str] = None
+    status: Optional[str] = None
+    outcome: Optional[str] = None
+    end_date: Optional[datetime] = None
+
+
 class TreatmentResponse(TreatmentCreate):
     id: int
     patient_id: int
     start_date: datetime
+    end_date: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
 
 
 class AdmissionCreate(BaseModel):

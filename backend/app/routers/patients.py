@@ -4,7 +4,14 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import can_access_patient, can_modify_patient, can_view_pii, get_current_user, require_roles
+from app.auth.dependencies import (
+    can_access_patient,
+    can_manage_patient_clinical_data,
+    can_modify_patient,
+    can_view_pii,
+    get_current_user,
+    require_roles,
+)
 from app.database import get_db
 from app.models.patient import Admission, MedicalHistory, Patient, Treatment
 from app.models.user import User, UserRole
@@ -94,16 +101,36 @@ def update_patient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not can_modify_patient(current_user):
-        raise HTTPException(status_code=403, detail="Cannot modify patient records")
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    if current_user.role == UserRole.DOCTOR and patient.assigned_doctor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not assigned to this patient")
+    if not can_modify_patient(current_user, patient):
+        raise HTTPException(status_code=403, detail="Cannot modify patient records (not assigned to patient)")
 
     for field, value in patient_data.model_dump(exclude_unset=True).items():
         setattr(patient, field, value)
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+
+@router.put("/{patient_id}/assign-doctor", response_model=PatientResponse)
+def assign_doctor(
+    patient_id: int,
+    doctor_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.SYSTEM_ADMIN, UserRole.HOSPITAL_ADMIN])),
+):
+    """Assign or reassign a patient to a doctor (restricted to Administrators)."""
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    doctor = db.query(User).filter(User.id == doctor_id, User.role == UserRole.DOCTOR).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    patient.assigned_doctor_id = doctor.id
     db.commit()
     db.refresh(patient)
     return patient
@@ -119,6 +146,9 @@ def add_medical_history(
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+    if not can_manage_patient_clinical_data(current_user, patient):
+        raise HTTPException(status_code=403, detail="Access denied. You can only record medical history for patients assigned to you.")
+
     record = MedicalHistory(patient_id=patient_id, **history.model_dump())
     db.add(record)
     db.commit()
@@ -136,6 +166,9 @@ def add_treatment(
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+    if not can_manage_patient_clinical_data(current_user, patient):
+        raise HTTPException(status_code=403, detail="Access denied. You can only record treatments for patients assigned to you.")
+
     record = Treatment(patient_id=patient_id, **treatment.model_dump())
     db.add(record)
     db.commit()
@@ -153,8 +186,12 @@ def add_admission(
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+    if current_user.role == UserRole.DOCTOR and patient.assigned_doctor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied. You can only record admissions for patients assigned to you.")
+
     record = Admission(patient_id=patient_id, **admission.model_dump())
     db.add(record)
     db.commit()
     db.refresh(record)
     return record
+

@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import can_access_patient, get_current_user
+from app.auth.dependencies import can_access_patient, get_current_user, require_roles
 from app.database import get_db
 from app.ml.clinical_insights import ClinicalInsightsEngine
 from app.ml.predictor import DataPreprocessor, ModelTrainer, PredictionEngine
@@ -13,6 +13,7 @@ from app.models.prediction import ReadmissionForecast, RiskPrediction
 from app.models.user import User, UserRole
 from app.schemas.prediction import (
     ClinicalInsightResponse,
+    ControlledTrainRequest,
     DashboardStatsResponse,
     ModelMetricsResponse,
     ReadmissionForecastRequest,
@@ -21,10 +22,13 @@ from app.schemas.prediction import (
     RiskPredictionResponse,
 )
 from app.config import settings
+from app.services.model_manager import ModelManagerService
 from app.services.prediction_service import DatasetService, PredictionService
 
 router = APIRouter(prefix="/predictions", tags=["Risk Prediction & Forecasting"])
 prediction_service = PredictionService()
+model_manager = ModelManagerService()
+
 
 
 def _patient_identity(patient: Optional[Patient], hide_pii: bool) -> dict:
@@ -223,6 +227,7 @@ def get_clinical_insights(
         readmission_probability=result["readmission_probability"],
         key_risk_factors=insights["key_risk_factors"],
         care_recommendations=insights["care_recommendations"],
+        clinical_pillars=insights.get("clinical_pillars", {}),
         follow_up_plan=insights["follow_up_plan"],
         discharge_support=insights["discharge_support"],
     )
@@ -238,29 +243,107 @@ def get_model_metrics(current_user: User = Depends(get_current_user)):
     return metrics
 
 
-@router.post("/models/train")
-def train_models(
+@router.get("/models/versions")
+def get_model_versions(
+    model_name: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role != UserRole.SYSTEM_ADMIN:
-        raise HTTPException(status_code=403, detail="Only system administrators can train models")
+    """Retrieve version registry and performance tracking history across models."""
+    return model_manager.get_version_history(db, model_name)
 
-    df = DataPreprocessor.load_dataset(settings.dataset_path)
-    if len(df) > 20000:
-        df = df.sample(n=20000, random_state=42)
-    trainer = ModelTrainer()
-    rf_metrics = trainer.train(df, "random_forest")
-    xgb_metrics = trainer.train(df, "xgboost")
+
+@router.get("/models/monitoring")
+def get_model_monitoring(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.SYSTEM_ADMIN, UserRole.HOSPITAL_ADMIN])),
+):
+    """Real-time model monitoring, prediction drift detection, and serving statistics."""
+    return model_manager.get_monitoring_dashboard(db)
+
+
+@router.post("/models/train")
+def train_models(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.SYSTEM_ADMIN])),
+):
+    """Retrain standard Random Forest and XGBoost with balanced class weights and threshold calibration."""
+    rf_metrics = model_manager.controlled_retrain(
+        db=db,
+        model_type="random_forest",
+        sample_size=20000,
+        class_weight_strategy="balanced",
+        trained_by=current_user.username,
+        notes="Standard retrain with balanced class weights and threshold calibration",
+    )
+    xgb_metrics = model_manager.controlled_retrain(
+        db=db,
+        model_type="xgboost",
+        sample_size=20000,
+        class_weight_strategy="balanced",
+        trained_by=current_user.username,
+        notes="Standard retrain with scale_pos_weight and threshold calibration",
+    )
     return {"random_forest": rf_metrics, "xgboost": xgb_metrics}
+
+
+@router.post("/models/train-controlled")
+def train_controlled(
+    request: ControlledTrainRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.SYSTEM_ADMIN])),
+):
+    """Controlled retraining with configurable sample size, hyperparameters, and class weighting."""
+    models_to_train = ["random_forest", "xgboost"] if request.model_type == "both" else [request.model_type]
+    results = {}
+
+    for m in models_to_train:
+        res = model_manager.controlled_retrain(
+            db=db,
+            model_type=m,
+            sample_size=request.sample_size,
+            class_weight_strategy=request.class_weight_strategy,
+            hyperparameters=request.hyperparameters,
+            notes=request.notes,
+            trained_by=current_user.username,
+        )
+        results[m] = res
+
+    return results
+
+
+@router.post("/models/activate/{version_id}")
+def activate_model_version(
+    version_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.SYSTEM_ADMIN])),
+):
+    """Promote a candidate model version to active production status."""
+    try:
+        return model_manager.activate_version(db, version_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/models/rollback/{model_type}")
+def rollback_model_version(
+    model_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.SYSTEM_ADMIN])),
+):
+    """Rollback active model to the immediate previous version."""
+    try:
+        return model_manager.rollback_model(db, model_type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/dataset/import")
 def import_dataset(
     limit: int = 500,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.SYSTEM_ADMIN])),
 ):
-    if current_user.role not in [UserRole.SYSTEM_ADMIN, UserRole.HOSPITAL_ADMIN]:
-        raise HTTPException(status_code=403, detail="Access denied")
+    """Import dataset records (restricted strictly to System Administrator)."""
     return DatasetService.load_and_import(db, limit)
+

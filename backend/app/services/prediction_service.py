@@ -172,9 +172,23 @@ class PredictionService:
             clinical_insights=json.dumps(insights["clinical_insights"]),
         )
         db.add(prediction)
+
+        # Log inference for real-time model monitoring and drift detection
+        from app.services.model_manager import ModelManagerService
+        ModelManagerService().log_inference(
+            db=db,
+            model_name=result["model_used"],
+            risk_score=result["risk_score"],
+            risk_category=result["risk_category"],
+            probability=result["readmission_probability"],
+            latency_ms=result.get("latency_ms", 0.0),
+            model_version=result.get("model_version", "v1.0.0"),
+        )
+
         db.commit()
         db.refresh(prediction)
         return prediction
+
 
     def forecast_readmission(
         self, db: Session, patient: Patient, period_days: int = 30

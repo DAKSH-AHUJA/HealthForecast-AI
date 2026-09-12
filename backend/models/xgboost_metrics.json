@@ -1,9 +1,15 @@
 {
-  "accuracy": 0.88675,
-  "precision": 0.3333333333333333,
-  "recall": 0.008908685968819599,
-  "f1_score": 0.01735357917570499,
-  "roc_auc": 0.656166367389844,
+  "accuracy": 0.68225,
+  "precision": 0.18188854489164086,
+  "recall": 0.5233853006681515,
+  "f1_score": 0.269959793222286,
+  "roc_auc": 0.6471090360693904,
+  "optimal_threshold": 0.4963,
   "model_name": "xgboost",
-  "trained_at": "2026-09-05T10:11:04.202805"
+  "version": "v1.0.0",
+  "sample_size": 20000,
+  "hyperparameters": {},
+  "class_weight_strategy": "balanced",
+  "trained_at": "2026-09-12T18:08:33.188113",
+  "model_path": "models\\xgboost_v1.0.0.joblib"
 }

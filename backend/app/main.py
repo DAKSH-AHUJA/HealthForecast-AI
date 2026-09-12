@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine, ensure_schema
-from app.routers import auth, patients, predictions
+from app.routers import auth, patients, predictions, treatments
 from app.services.prediction_service import backfill_patient_names
 
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,8 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(patients.router, prefix="/api")
 app.include_router(predictions.router, prefix="/api")
+app.include_router(treatments.router, prefix="/api")
+
 
 
 @app.get("/")

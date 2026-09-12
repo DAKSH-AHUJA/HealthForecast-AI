@@ -1,17 +1,19 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 import {
-  Activity, Users, AlertTriangle, TrendingUp, Brain, Settings, LogOut,
+  Activity, Users, AlertTriangle, TrendingUp, Brain, Settings, LogOut, Pill,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: Activity, label: 'Dashboard', roles: ['doctor', 'hospital_admin', 'researcher', 'system_admin'] },
   { to: '/patients', icon: Users, label: 'Patients', roles: ['doctor', 'hospital_admin', 'researcher', 'system_admin'] },
+  { to: '/treatments', icon: Pill, label: 'Treatment Effectiveness', roles: ['doctor', 'hospital_admin', 'researcher', 'system_admin'] },
   { to: '/risk-prediction', icon: AlertTriangle, label: 'Risk Prediction', roles: ['doctor', 'hospital_admin', 'researcher', 'system_admin'] },
   { to: '/forecasting', icon: TrendingUp, label: 'Readmission Forecast', roles: ['doctor', 'hospital_admin', 'researcher', 'system_admin'] },
   { to: '/clinical-insights', icon: Brain, label: 'Clinical Insights', roles: ['doctor', 'hospital_admin', 'researcher', 'system_admin'] },
   { to: '/models', icon: Settings, label: 'Model Management', roles: ['system_admin'] },
 ];
+
 
 export default function Layout() {
   const { user, logout } = useAuth();

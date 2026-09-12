@@ -53,9 +53,24 @@ def can_access_patient(user: User, patient) -> bool:
     return False
 
 
-def can_modify_patient(user: User) -> bool:
-    return user.role in [UserRole.SYSTEM_ADMIN, UserRole.DOCTOR]
+def can_modify_patient(user: User, patient=None) -> bool:
+    if user.role == UserRole.SYSTEM_ADMIN:
+        return True
+    if user.role == UserRole.DOCTOR:
+        if patient is not None:
+            return patient.assigned_doctor_id == user.id
+        return True
+    return False
+
+
+def can_manage_patient_clinical_data(user: User, patient) -> bool:
+    if user.role == UserRole.SYSTEM_ADMIN:
+        return True
+    if user.role == UserRole.DOCTOR:
+        return patient.assigned_doctor_id == user.id
+    return False
 
 
 def can_view_pii(user: User) -> bool:
     return user.role != UserRole.RESEARCHER
+

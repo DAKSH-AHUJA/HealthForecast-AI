@@ -34,6 +34,16 @@ export const patientsAPI = {
   get: (id) => api.get(`/patients/${id}`),
   create: (data) => api.post('/patients/', data),
   update: (id, data) => api.put(`/patients/${id}`, data),
+  assignDoctor: (patientId, doctorId) =>
+    api.put(`/patients/${patientId}/assign-doctor?doctor_id=${doctorId}`),
+};
+
+export const treatmentsAPI = {
+  getEffectiveness: () => api.get('/treatments/effectiveness'),
+  getPatientTreatments: (patientId) => api.get(`/treatments/patient/${patientId}`),
+  addTreatment: (patientId, data) => api.post(`/treatments/patient/${patientId}`, data),
+  updateTreatment: (treatmentId, data) => api.put(`/treatments/${treatmentId}`, data),
+  getRecoveryAnalysis: (patientId) => api.get(`/treatments/patient/${patientId}/recovery-analysis`),
 };
 
 export const predictionsAPI = {
@@ -47,8 +57,15 @@ export const predictionsAPI = {
   getForecasts: (patientId) => api.get(`/predictions/forecast/patient/${patientId}`),
   clinicalInsights: (patientId) => api.get(`/predictions/clinical-insights/${patientId}`),
   modelMetrics: () => api.get('/predictions/models/metrics'),
+  modelVersions: (modelName) =>
+    api.get(`/predictions/models/versions${modelName ? `?model_name=${modelName}` : ''}`),
   trainModels: () => api.post('/predictions/models/train'),
+  trainControlled: (data) => api.post('/predictions/models/train-controlled', data),
+  activateVersion: (versionId) => api.post(`/predictions/models/activate/${versionId}`),
+  rollbackModel: (modelType) => api.post(`/predictions/models/rollback/${modelType}`),
+  modelMonitoring: () => api.get('/predictions/models/monitoring'),
   importDataset: (limit = 500) => api.post(`/predictions/dataset/import?limit=${limit}`),
 };
 
 export default api;
+
