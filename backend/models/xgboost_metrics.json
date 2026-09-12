@@ -1,15 +1,15 @@
 {
-  "accuracy": 0.68225,
-  "precision": 0.18188854489164086,
-  "recall": 0.5233853006681515,
-  "f1_score": 0.269959793222286,
-  "roc_auc": 0.6471090360693904,
-  "optimal_threshold": 0.4963,
+  "accuracy": 0.7088333333333333,
+  "precision": 0.18421052631578946,
+  "recall": 0.44573082489146165,
+  "f1_score": 0.26068556919170544,
+  "roc_auc": 0.6307723907113469,
+  "optimal_threshold": 0.5338,
   "model_name": "xgboost",
-  "version": "v1.0.0",
-  "sample_size": 20000,
+  "version": "v3.0.0",
+  "sample_size": 30000,
   "hyperparameters": {},
   "class_weight_strategy": "balanced",
-  "trained_at": "2026-09-12T18:08:33.188113",
-  "model_path": "models\\xgboost_v1.0.0.joblib"
+  "trained_at": "2026-09-12T17:19:52.460903",
+  "model_path": "models/xgboost_v3.0.0.joblib"
 }

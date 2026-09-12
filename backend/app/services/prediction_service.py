@@ -33,6 +33,9 @@ def patient_to_dict(patient: Patient) -> Dict[str, Any]:
         "a1cresult": patient.a1cresult,
         "change": patient.change,
         "diabetes_med": patient.diabetes_med,
+        "diag_1": patient.diag_1,
+        "diag_2": patient.diag_2,
+        "diag_3": patient.diag_3,
     }
 
 

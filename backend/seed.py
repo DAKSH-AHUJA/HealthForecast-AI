@@ -131,22 +131,22 @@ def main():
             from app.services.model_manager import ModelManagerService
             model_mgr = ModelManagerService()
 
-            print("Calibrating & Training ML models (20k sample with balanced weights)...")
+            print("Calibrating & Training ML models (30k sample with balanced weights & clinical features)...")
             rf = model_mgr.controlled_retrain(
                 db=db,
                 model_type="random_forest",
-                sample_size=20000,
+                sample_size=30000,
                 class_weight_strategy="balanced",
                 trained_by="system_admin",
-                notes="Initial production model with balanced class weights and threshold calibration",
+                notes="Refined Random Forest with ICD-9 clinical categorization, Kaggle feature engineering, and balanced threshold calibration",
             )
             xgb = model_mgr.controlled_retrain(
                 db=db,
                 model_type="xgboost",
-                sample_size=20000,
+                sample_size=30000,
                 class_weight_strategy="balanced",
                 trained_by="system_admin",
-                notes="Initial production model with scale_pos_weight and threshold calibration",
+                notes="Calibrated XGBoost model with scale_pos_weight and Kaggle feature engineering",
             )
             print(f"[OK] Random Forest v1.0.0 - Accuracy: {rf['accuracy']:.4f}, Recall: {rf['recall']:.4f}, F1: {rf['f1_score']:.4f}, ROC-AUC: {rf['roc_auc']:.4f}, Threshold: {rf['optimal_threshold']}")
             print(f"[OK] XGBoost v1.0.0 - Accuracy: {xgb['accuracy']:.4f}, Recall: {xgb['recall']:.4f}, F1: {xgb['f1_score']:.4f}, ROC-AUC: {xgb['roc_auc']:.4f}, Threshold: {xgb['optimal_threshold']}")

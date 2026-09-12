@@ -36,8 +36,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-healthforecast_db}
       MONGODB_URL: ${MONGODB_URL:-mongodb://mongodb:27017}
     volumes:
+      - ./backend/app:/app/app
       - ./backend/data:/app/data
       - ./backend/models:/app/models
+      - ./backend/seed.py:/app/seed.py
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,8 +52,12 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
     depends_on:
       - backend
+
 
 volumes:
   postgres_data:
